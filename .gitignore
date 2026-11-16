@@ -1,0 +1,18 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+build/
+dist/
+*.egg-info/
+.ipynb_checkpoints/
+spark-warehouse/
+metastore_db/
+derby.log
+
+# local lakehouse folders / executed notebooks
+_local_lakehouse/
+_runs/
+
+pipeline/*.filled.json

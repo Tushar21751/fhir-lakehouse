@@ -1,0 +1,127 @@
+{
+  "name": "pl_fhir_medallion",
+  "properties": {
+    "description": "FHIR API -> raw -> bronze -> silver per resource (Patient, Encounter, Observation, Condition in that order), then gold.",
+    "activities": [
+      {
+        "name": "For each resource",
+        "type": "ForEach",
+        "dependsOn": [],
+        "typeProperties": {
+          "items": {
+            "value": "@pipeline().parameters.resources",
+            "type": "Expression"
+          },
+          "isSequential": true,
+          "activities": [
+            {
+              "name": "Ingest raw",
+              "type": "TridentNotebook",
+              "dependsOn": [],
+              "policy": {
+                "timeout": "0.04:00:00",
+                "retry": 1,
+                "retryIntervalInSeconds": 120,
+                "secureOutput": false,
+                "secureInput": false
+              },
+              "typeProperties": {
+                "notebookId": "__NB_01_INGEST_RAW_ID__",
+                "workspaceId": "__WORKSPACE_ID__",
+                "parameters": {
+                  "resource_type": {"value": {"value": "@item()", "type": "Expression"}, "type": "string"},
+                  "run_id": {"value": {"value": "@pipeline().RunId", "type": "Expression"}, "type": "string"},
+                  "start_date": {"value": {"value": "@pipeline().parameters.start_date", "type": "Expression"}, "type": "string"},
+                  "end_date": {"value": {"value": "@pipeline().parameters.end_date", "type": "Expression"}, "type": "string"},
+                  "response_format": {"value": {"value": "@pipeline().parameters.response_format", "type": "Expression"}, "type": "string"},
+                  "max_pages": {"value": {"value": "@pipeline().parameters.max_pages", "type": "Expression"}, "type": "int"},
+                  "lakehouse_root": {"value": {"value": "@pipeline().parameters.lakehouse_root", "type": "Expression"}, "type": "string"}
+                }
+              }
+            },
+            {
+              "name": "Raw to bronze",
+              "type": "TridentNotebook",
+              "dependsOn": [
+                {"activity": "Ingest raw", "dependencyConditions": ["Succeeded"]}
+              ],
+              "policy": {
+                "timeout": "0.02:00:00",
+                "retry": 0,
+                "retryIntervalInSeconds": 30,
+                "secureOutput": false,
+                "secureInput": false
+              },
+              "typeProperties": {
+                "notebookId": "__NB_02_RAW_TO_BRONZE_ID__",
+                "workspaceId": "__WORKSPACE_ID__",
+                "parameters": {
+                  "resource_type": {"value": {"value": "@item()", "type": "Expression"}, "type": "string"},
+                  "run_id": {"value": {"value": "@pipeline().RunId", "type": "Expression"}, "type": "string"},
+                  "lakehouse_root": {"value": {"value": "@pipeline().parameters.lakehouse_root", "type": "Expression"}, "type": "string"}
+                }
+              }
+            },
+            {
+              "name": "Bronze to silver",
+              "type": "TridentNotebook",
+              "dependsOn": [
+                {"activity": "Raw to bronze", "dependencyConditions": ["Succeeded"]}
+              ],
+              "policy": {
+                "timeout": "0.02:00:00",
+                "retry": 0,
+                "retryIntervalInSeconds": 30,
+                "secureOutput": false,
+                "secureInput": false
+              },
+              "typeProperties": {
+                "notebookId": "__NB_03_BRONZE_TO_SILVER_ID__",
+                "workspaceId": "__WORKSPACE_ID__",
+                "parameters": {
+                  "resource_type": {"value": {"value": "@item()", "type": "Expression"}, "type": "string"},
+                  "run_id": {"value": {"value": "@pipeline().RunId", "type": "Expression"}, "type": "string"},
+                  "lakehouse_root": {"value": {"value": "@pipeline().parameters.lakehouse_root", "type": "Expression"}, "type": "string"}
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "Silver to gold",
+        "type": "TridentNotebook",
+        "dependsOn": [
+          {"activity": "For each resource", "dependencyConditions": ["Succeeded"]}
+        ],
+        "policy": {
+          "timeout": "0.02:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "notebookId": "__NB_04_SILVER_TO_GOLD_ID__",
+          "workspaceId": "__WORKSPACE_ID__",
+          "parameters": {
+            "run_id": {"value": {"value": "@pipeline().RunId", "type": "Expression"}, "type": "string"},
+            "lakehouse_root": {"value": {"value": "@pipeline().parameters.lakehouse_root", "type": "Expression"}, "type": "string"}
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "resources": {
+        "type": "array",
+        "defaultValue": ["Patient", "Encounter", "Observation", "Condition"]
+      },
+      "start_date": {"type": "string", "defaultValue": ""},
+      "end_date": {"type": "string", "defaultValue": ""},
+      "response_format": {"type": "string", "defaultValue": "json"},
+      "max_pages": {"type": "int", "defaultValue": -1},
+      "lakehouse_root": {"type": "string", "defaultValue": ""}
+    },
+    "annotations": []
+  }
+}

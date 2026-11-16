@@ -1,0 +1,39 @@
+{
+  "fhir": {
+    "base_url": "https://hapi.fhir.org/baseR4",
+    "format": "json",
+    "page_size": 100,
+    "max_pages_per_window": 200,
+    "timeout_seconds": 60,
+    "max_retries": 5,
+    "backoff_seconds": 2,
+    "extra_params": {
+      "_sort": "_lastUpdated"
+    }
+  },
+  "load": {
+    "initial_lookback_days": 3,
+    "safety_lag_minutes": 5
+  },
+  "resources": [
+    {"name": "Patient", "enabled": true, "params": {}},
+    {"name": "Encounter", "enabled": true, "params": {}},
+    {"name": "Observation", "enabled": true, "params": {}},
+    {"name": "Condition", "enabled": true, "params": {}}
+  ],
+  "lakehouse": {
+    "files_root": "Files",
+    "files_mount": "/lakehouse/default/Files",
+    "tables_root": "Tables",
+    "raw_folder": "raw/fhir"
+  },
+  "tables": {
+    "bronze_prefix": "bronze_",
+    "silver_prefix": "silver_",
+    "gold_prefix": "gold_",
+    "control_prefix": "ctl_"
+  },
+  "spark": {
+    "timezone": "UTC"
+  }
+}
